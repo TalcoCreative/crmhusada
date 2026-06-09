@@ -1,1 +1,7 @@
 project_id = "iqllohqbaqmdiyojygow"
+
+[functions.fonnte-webhook]
+verify_jwt = false
+
+[functions.fonnte-test]
+verify_jwt = false
