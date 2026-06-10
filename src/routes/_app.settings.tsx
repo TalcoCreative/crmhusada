@@ -449,6 +449,10 @@ function TeamTab() {
               <Input value={position} onChange={(e) => setPosition(e.target.value)} placeholder="cth: Front Office, Dokter, Supervisor" />
             </div>
             <div className="space-y-1.5">
+              <Label>No. WhatsApp (62...)</Label>
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="6281234567890" />
+            </div>
+            <div className="space-y-1.5">
               <Label>Email</Label>
               <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="agent@husada.id" />
             </div>
