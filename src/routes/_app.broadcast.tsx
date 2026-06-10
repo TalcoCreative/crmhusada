@@ -145,7 +145,7 @@ function BroadcastPage() {
                 options={[
                   { value: ALL, label: "Semua agent" },
                   { value: "__UNASSIGNED__", label: "Belum di-assign" },
-                  ...agents.map((a) => ({ value: a.id, label: a.full_name || a.email })),
+                  ...agents.map((a) => ({ value: a.id, label: a.full_name || a.email || a.id })),
                 ]} />
             </div>
 
