@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Send, Search, Loader2, User as UserIcon, Tag, Zap, FileText } from "lucide-react";
+import { Send, Search, Loader2, User as UserIcon, Tag, Zap, FileText, MoreVertical, StickyNote, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -34,9 +34,12 @@ type Message = {
   id: string; conversation_id: string;
   direction: "INBOUND" | "OUTBOUND"; content: string;
   sent_at: string; sent_by_id: string | null; status: string;
+  type: "TEXT" | "IMAGE" | "DOCUMENT" | "AUDIO" | "INTERNAL_NOTE";
 };
 type QuickReply = { id: string; name: string; content: string; sort_order: number };
 type Product = { id: string; name: string };
+
+type ComposeMode = "reply" | "note";
 
 export function InboxView({ mineOnly }: { mineOnly: boolean }) {
   const { user } = useAuth();
@@ -51,6 +54,7 @@ export function InboxView({ mineOnly }: { mineOnly: boolean }) {
   const [search, setSearch] = useState("");
   const [sending, setSending] = useState(false);
   const [text, setText] = useState("");
+  const [mode, setMode] = useState<ComposeMode>("reply");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   async function loadConversations() {
@@ -130,7 +134,25 @@ export function InboxView({ mineOnly }: { mineOnly: boolean }) {
     const content = (payload ?? text).trim();
     if (!content || !activeId) return;
     setSending(true);
+    const textBackup = content;
     setText("");
+
+    if (mode === "note") {
+      // Internal note: insert directly, never sent to user via Fonnte
+      const { error } = await supabase.from("messages").insert({
+        conversation_id: activeId,
+        direction: "OUTBOUND",
+        type: "INTERNAL_NOTE",
+        content,
+        sent_by_id: user?.id || null,
+        status: "SENT",
+      } as any);
+      setSending(false);
+      if (error) { toast.error(error.message); setText(textBackup); return; }
+      toast.success("Catatan internal disimpan");
+      return;
+    }
+
     const { data: { session } } = await supabase.auth.getSession();
     const res = await fetch(`https://iqllohqbaqmdiyojygow.supabase.co/functions/v1/fonnte-send`, {
       method: "POST",
@@ -139,7 +161,7 @@ export function InboxView({ mineOnly }: { mineOnly: boolean }) {
     });
     const json = await res.json();
     setSending(false);
-    if (!res.ok || !json.ok) { toast.error(json.error || "Gagal kirim"); setText(content); }
+    if (!res.ok || !json.ok) { toast.error(json.error || "Gagal kirim"); setText(textBackup); }
   }
 
   async function assignAgent(agentId: string | null) {
@@ -168,6 +190,7 @@ export function InboxView({ mineOnly }: { mineOnly: boolean }) {
     const myName = agentName(user?.id || null);
     const filled = content.replace(/\{agent\}/g, myName);
     setText(filled);
+    setMode("reply");
   }
 
   return (
@@ -244,23 +267,30 @@ export function InboxView({ mineOnly }: { mineOnly: boolean }) {
             </div>
           ) : (
             <>
-              <header className="px-4 py-3 border-b bg-card/80 backdrop-blur space-y-2">
-                <div className="flex items-start justify-between gap-3 flex-wrap">
-                  <div>
+              <header className="px-4 py-3 border-b bg-card/80 backdrop-blur">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
                     <button className="md:hidden text-xs text-primary mb-1" onClick={() => setActiveId(null)}>← Kembali</button>
-                    <div className="font-semibold text-base">{active.contact?.full_name || "Tanpa nama"}</div>
+                    <div className="font-semibold text-base truncate">{active.contact?.full_name || "Tanpa nama"}</div>
                     <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3">
                       <span>{active.contact?.whatsapp_number}</span>
-                      {active.contact?.domicile && <span>· {active.contact.domicile}</span>}
                       {activeProductName && <span>· {activeProductName}</span>}
                     </div>
-                    {active.contact?.chief_complaint && (
-                      <div className="text-[11px] text-muted-foreground mt-1 italic line-clamp-1">
-                        Keluhan: {active.contact.chief_complaint}
-                      </div>
-                    )}
+                    {/* Keluhan + extras: desktop only */}
+                    <div className="hidden md:block">
+                      {active.contact?.domicile && (
+                        <div className="text-[11px] text-muted-foreground mt-0.5">{active.contact.domicile}</div>
+                      )}
+                      {active.contact?.chief_complaint && (
+                        <div className="text-[11px] text-muted-foreground mt-1 italic line-clamp-1">
+                          Keluhan: {active.contact.chief_complaint}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-wrap">
+
+                  {/* Desktop quick actions */}
+                  <div className="hidden md:flex items-center gap-2 flex-wrap">
                     <div className="flex items-center gap-1.5">
                       <Tag className="size-3.5 text-muted-foreground" />
                       <Select value={active.contact?.stage_id || ""} onValueChange={changeStage}>
@@ -289,11 +319,74 @@ export function InboxView({ mineOnly }: { mineOnly: boolean }) {
                       </Button>
                     )}
                   </div>
+
+                  {/* Mobile actions menu */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button size="icon" variant="ghost" className="md:hidden h-9 w-9 shrink-0">
+                        <MoreVertical className="size-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-72 p-3 space-y-3" align="end">
+                      <div className="space-y-1.5">
+                        <div className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
+                          <Tag className="size-3" /> Stage
+                        </div>
+                        <Select value={active.contact?.stage_id || ""} onValueChange={changeStage}>
+                          <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Pilih stage" /></SelectTrigger>
+                          <SelectContent>
+                            {stages.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <div className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
+                          <UserIcon className="size-3" /> Tugaskan agent
+                        </div>
+                        <Select value={active.assigned_agent_id || "unassigned"}
+                          onValueChange={(v) => assignAgent(v === "unassigned" ? null : v)}>
+                          <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="unassigned">Belum ditugaskan</SelectItem>
+                            {agents.map((a) => (
+                              <SelectItem key={a.id} value={a.id}>{a.full_name || a.email?.split("@")[0]}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {user && active.assigned_agent_id !== user.id && (
+                        <Button size="sm" className="w-full h-9 text-xs" onClick={() => assignAgent(user.id)}>
+                          Ambil chat ini
+                        </Button>
+                      )}
+                      {active.contact?.chief_complaint && (
+                        <div className="text-[11px] text-muted-foreground pt-2 border-t italic">
+                          Keluhan: {active.contact.chief_complaint}
+                        </div>
+                      )}
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </header>
 
               <div ref={scrollRef} className="flex-1 overflow-auto p-4 space-y-3 bg-muted/30">
                 {messages.map((m) => {
+                  if (m.type === "INTERNAL_NOTE") {
+                    return (
+                      <div key={m.id} className="flex justify-center">
+                        <div className="max-w-[85%] rounded-xl border border-amber-400/50 bg-amber-100/70 dark:bg-amber-500/10 px-3 py-2 text-xs shadow-sm">
+                          <div className="flex items-center gap-1.5 text-[10px] font-medium text-amber-700 dark:text-amber-300 mb-1">
+                            <StickyNote className="size-3" />
+                            Catatan Internal · {agentName(m.sent_by_id)}
+                          </div>
+                          <div className="whitespace-pre-wrap break-words text-amber-900 dark:text-amber-100">{m.content}</div>
+                          <div className="text-[10px] opacity-60 mt-1 text-right">
+                            {new Date(m.sent_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
                   const out = m.direction === "OUTBOUND";
                   return (
                     <div key={m.id} className={cn("flex flex-col gap-0.5", out ? "items-end" : "items-start")}>
@@ -315,40 +408,65 @@ export function InboxView({ mineOnly }: { mineOnly: boolean }) {
               </div>
 
               <form onSubmit={(e) => { e.preventDefault(); sendMessage(); }} className="border-t p-3 bg-card space-y-2">
-                <div className="flex flex-wrap gap-1.5">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button type="button" size="sm" variant="outline" className="h-7 text-xs gap-1">
-                        <Zap className="size-3" /> Quick Replies
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80 p-1" align="start">
-                      <div className="max-h-72 overflow-auto">
-                        {quickReplies.length === 0 && (
-                          <div className="p-3 text-xs text-muted-foreground">Belum ada template. Tambah di Settings.</div>
-                        )}
-                        {quickReplies.map((q) => (
+                <div className="flex flex-wrap gap-1.5 items-center">
+                  <div className="inline-flex rounded-full border bg-background p-0.5 text-[11px]">
+                    <button type="button" onClick={() => setMode("reply")}
+                      className={cn("px-2.5 py-1 rounded-full flex items-center gap-1 transition-colors",
+                        mode === "reply" ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>
+                      <MessageSquare className="size-3" /> Balas WA
+                    </button>
+                    <button type="button" onClick={() => setMode("note")}
+                      className={cn("px-2.5 py-1 rounded-full flex items-center gap-1 transition-colors",
+                        mode === "note" ? "bg-amber-500 text-white" : "text-muted-foreground")}>
+                      <StickyNote className="size-3" /> Catatan
+                    </button>
+                  </div>
+                  {mode === "reply" && (
+                    <>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button type="button" size="sm" variant="outline" className="h-7 text-xs gap-1">
+                            <Zap className="size-3" /> Quick Replies
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80 p-1" align="start">
+                          <div className="max-h-72 overflow-auto">
+                            {quickReplies.length === 0 && (
+                              <div className="p-3 text-xs text-muted-foreground">Belum ada template. Tambah di Settings.</div>
+                            )}
+                            {quickReplies.map((q) => (
+                              <button key={q.id} type="button" onClick={() => applyQuickReply(q.content)}
+                                className="w-full text-left px-3 py-2 rounded-md hover:bg-accent text-xs">
+                                <div className="font-medium">{q.name}</div>
+                                <div className="text-muted-foreground line-clamp-2">{q.content}</div>
+                              </button>
+                            ))}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                      <div className="hidden sm:flex flex-wrap gap-1.5">
+                        {quickReplies.slice(0, 3).map((q) => (
                           <button key={q.id} type="button" onClick={() => applyQuickReply(q.content)}
-                            className="w-full text-left px-3 py-2 rounded-md hover:bg-accent text-xs">
-                            <div className="font-medium">{q.name}</div>
-                            <div className="text-muted-foreground line-clamp-2">{q.content}</div>
+                            className="text-[11px] px-2 py-1 rounded-full border bg-background hover:bg-accent transition-colors flex items-center gap-1">
+                            <FileText className="size-3" /> {q.name}
                           </button>
                         ))}
                       </div>
-                    </PopoverContent>
-                  </Popover>
-                  {quickReplies.slice(0, 4).map((q) => (
-                    <button key={q.id} type="button" onClick={() => applyQuickReply(q.content)}
-                      className="text-[11px] px-2 py-1 rounded-full border bg-background hover:bg-accent transition-colors flex items-center gap-1">
-                      <FileText className="size-3" /> {q.name}
-                    </button>
-                  ))}
+                    </>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <Input value={text} onChange={(e) => setText(e.target.value)}
-                    placeholder={`Balas sebagai ${agentName(user?.id || null)}...`} disabled={sending} autoFocus />
-                  <Button type="submit" disabled={sending || !text.trim()}>
-                    {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+                    placeholder={mode === "note"
+                      ? "Catatan internal — hanya dilihat agent..."
+                      : `Balas sebagai ${agentName(user?.id || null)}...`}
+                    disabled={sending}
+                    className={mode === "note" ? "bg-amber-50 dark:bg-amber-500/10 border-amber-300" : ""}
+                    autoFocus />
+                  <Button type="submit" disabled={sending || !text.trim()}
+                    className={mode === "note" ? "bg-amber-500 hover:bg-amber-600 text-white" : ""}>
+                    {sending ? <Loader2 className="size-4 animate-spin" /> :
+                      mode === "note" ? <StickyNote className="size-4" /> : <Send className="size-4" />}
                   </Button>
                 </div>
               </form>
