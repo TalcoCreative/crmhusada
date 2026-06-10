@@ -88,6 +88,14 @@ export function InboxView({ mineOnly }: { mineOnly: boolean }) {
 
   useEffect(() => { loadConversations(); loadMeta(); }, [mineOnly, user?.id]);
 
+  // Auto-select conversation from ?c= query param
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const c = params.get("c");
+    if (c) setActiveId(c);
+  }, [conversations.length]);
+
   // Online heartbeat — update last_seen_at every 60s
   useEffect(() => {
     if (!user) return;
