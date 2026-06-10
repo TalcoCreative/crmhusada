@@ -298,6 +298,56 @@ function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Stage transitions */}
+      <Card className="glow-soft">
+        <CardHeader>
+          <CardTitle className="text-base">Avg Perpindahan Stage</CardTitle>
+          <p className="text-xs text-muted-foreground">Rata-rata waktu (jam) & jumlah perpindahan antar stage berdasarkan log aktivitas dalam rentang ini.</p>
+        </CardHeader>
+        <CardContent>
+          {(!data?.transitions || data.transitions.length === 0) ? (
+            <p className="text-center text-sm text-muted-foreground py-8">Belum ada perpindahan stage pada rentang ini.</p>
+          ) : (
+            <div className="grid lg:grid-cols-2 gap-4">
+              <ResponsiveContainer width="100%" height={Math.max(220, (data?.transitions?.length || 0) * 32)}>
+                <BarChart data={data?.transitions || []} layout="vertical" margin={{ left: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                  <XAxis type="number" fontSize={11} />
+                  <YAxis type="category" dataKey="edge" fontSize={11} width={160} />
+                  <Tooltip
+                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                    formatter={(v: any, n: any) => n === "avgHours" ? [`${v} jam`, "Rata-rata"] : [v, "Jumlah"]}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Bar dataKey="avgHours" name="Avg (jam)" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} />
+                  <Bar dataKey="count" name="Jumlah" fill="#10b981" radius={[0, 6, 6, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="text-muted-foreground">
+                    <tr className="border-b">
+                      <th className="text-left py-2">Perpindahan</th>
+                      <th className="text-right">Jumlah</th>
+                      <th className="text-right">Rata-rata</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.transitions.map((t: any) => (
+                      <tr key={t.edge} className="border-b">
+                        <td className="py-2 pr-2">{t.edge}</td>
+                        <td className="text-right tabular-nums">{t.count}</td>
+                        <td className="text-right tabular-nums">{fmtSec(t.avgSec)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
