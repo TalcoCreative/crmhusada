@@ -251,3 +251,70 @@ function ProductsTab() {
     </div>
   );
 }
+
+function TeamTab() {
+  const [rows, setRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    setLoading(true);
+    const [{ data: profiles }, { data: roles }] = await Promise.all([
+      supabase.from("profiles").select("id, email, full_name, created_at").order("created_at"),
+      supabase.from("user_roles").select("user_id, role"),
+    ]);
+    const roleMap: Record<string, string[]> = {};
+    (roles || []).forEach((r: any) => {
+      roleMap[r.user_id] = [...(roleMap[r.user_id] || []), r.role];
+    });
+    setRows((profiles || []).map((p: any) => ({ ...p, roles: roleMap[p.id] || [] })));
+    setLoading(false);
+  }
+  useEffect(() => { load(); }, []);
+
+  const inviteUrl = `${window.location.origin}/auth`;
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Tim Agent</CardTitle>
+          <CardDescription>
+            Semua agent dapat melihat & membalas chat di Inbox secara real-time. Setiap balasan menampilkan nama agent.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center gap-2 p-3 rounded-md bg-muted/50">
+            <Input readOnly value={inviteUrl} />
+            <Button variant="outline" onClick={() => { navigator.clipboard.writeText(inviteUrl); toast.success("Link disalin"); }}>
+              <Copy className="size-4" />
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Bagikan link di atas ke calon agent. Mereka register → otomatis ter-set sebagai <Badge variant="outline">agent</Badge> dan langsung bisa membuka Inbox.
+          </p>
+
+          {loading ? (
+            <div className="text-sm text-muted-foreground">Memuat…</div>
+          ) : (
+            <div className="border rounded-md divide-y">
+              {rows.map((r) => (
+                <div key={r.id} className="p-3 flex items-center justify-between gap-3">
+                  <div>
+                    <div className="font-medium text-sm">{r.full_name || r.email}</div>
+                    <div className="text-xs text-muted-foreground">{r.email}</div>
+                  </div>
+                  <div className="flex gap-1">
+                    {r.roles.map((role: string) => (
+                      <Badge key={role} variant={role.includes("admin") ? "default" : "secondary"}>{role}</Badge>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {!rows.length && <p className="p-3 text-sm text-muted-foreground">Belum ada anggota tim.</p>}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
