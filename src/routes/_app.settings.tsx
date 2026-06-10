@@ -29,10 +29,12 @@ function SettingsPage() {
         <TabsList>
           <TabsTrigger value="fonnte">Fonnte WA</TabsTrigger>
           <TabsTrigger value="products">Produk</TabsTrigger>
+          <TabsTrigger value="team">Tim Agent</TabsTrigger>
           <TabsTrigger value="webhook">Webhook</TabsTrigger>
         </TabsList>
         <TabsContent value="fonnte"><FonnteTab /></TabsContent>
         <TabsContent value="products"><ProductsTab /></TabsContent>
+        <TabsContent value="team"><TeamTab /></TabsContent>
         <TabsContent value="webhook"><WebhookTab /></TabsContent>
       </Tabs>
     </div>
