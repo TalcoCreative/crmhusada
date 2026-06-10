@@ -87,6 +87,15 @@ export function InboxView({ mineOnly }: { mineOnly: boolean }) {
 
   useEffect(() => { loadConversations(); loadMeta(); }, [mineOnly, user?.id]);
 
+  // Online heartbeat — update last_seen_at every 60s
+  useEffect(() => {
+    if (!user) return;
+    const beat = () => supabase.from("profiles").update({ last_seen_at: new Date().toISOString() }).eq("id", user.id);
+    beat();
+    const t = setInterval(beat, 60_000);
+    return () => clearInterval(t);
+  }, [user?.id]);
+
   useEffect(() => {
     const ch = supabase.channel("inbox-all-" + (mineOnly ? "mine" : "team"))
       .on("postgres_changes", { event: "*", schema: "public", table: "conversations" }, () => loadConversations())
