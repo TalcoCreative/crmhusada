@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_app/inbox")({
   head: () => ({ meta: [{ title: "Inbox — Husada CRM" }] }),
+  validateSearch: (s: Record<string, unknown>) => ({ c: typeof s.c === "string" ? s.c : undefined }),
   component: () => <InboxView mineOnly={false} />,
 });
 
