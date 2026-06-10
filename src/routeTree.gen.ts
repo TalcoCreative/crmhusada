@@ -19,6 +19,7 @@ import { Route as AppLeadsRouteImport } from './routes/_app.leads'
 import { Route as AppInboxRouteImport } from './routes/_app.inbox'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppBroadcastRouteImport } from './routes/_app.broadcast'
+import { Route as AppActivityRouteImport } from './routes/_app.activity'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -69,10 +70,16 @@ const AppBroadcastRoute = AppBroadcastRouteImport.update({
   path: '/broadcast',
   getParentRoute: () => AppRoute,
 } as any)
+const AppActivityRoute = AppActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/activity': typeof AppActivityRoute
   '/broadcast': typeof AppBroadcastRoute
   '/dashboard': typeof AppDashboardRoute
   '/inbox': typeof AppInboxRoute
@@ -84,6 +91,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/activity': typeof AppActivityRoute
   '/broadcast': typeof AppBroadcastRoute
   '/dashboard': typeof AppDashboardRoute
   '/inbox': typeof AppInboxRoute
@@ -97,6 +105,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_app/activity': typeof AppActivityRoute
   '/_app/broadcast': typeof AppBroadcastRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/inbox': typeof AppInboxRoute
@@ -110,6 +119,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/activity'
     | '/broadcast'
     | '/dashboard'
     | '/inbox'
@@ -121,6 +131,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/activity'
     | '/broadcast'
     | '/dashboard'
     | '/inbox'
@@ -133,6 +144,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_app'
     | '/auth'
+    | '/_app/activity'
     | '/_app/broadcast'
     | '/_app/dashboard'
     | '/_app/inbox'
@@ -220,10 +232,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppBroadcastRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/activity': {
+      id: '/_app/activity'
+      path: '/activity'
+      fullPath: '/activity'
+      preLoaderRoute: typeof AppActivityRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppActivityRoute: typeof AppActivityRoute
   AppBroadcastRoute: typeof AppBroadcastRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppInboxRoute: typeof AppInboxRoute
@@ -234,6 +254,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppActivityRoute: AppActivityRoute,
   AppBroadcastRoute: AppBroadcastRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppInboxRoute: AppInboxRoute,

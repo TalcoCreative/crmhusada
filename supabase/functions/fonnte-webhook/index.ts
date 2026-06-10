@@ -149,11 +149,13 @@ Deno.serve(async (req) => {
       total_messages: (contact.total_messages || 0) + 1,
     }).eq("id", contact.id);
 
-    // Chatbot — only for brand-new leads. Existing leads (already have name) skip the bot entirely.
-    if (!isExisting && contact.chatbot_state !== "done") {
+    // Chatbot:
+    // - Brand new lead → run greet flow
+    // - Existing lead whose chat was deleted (chatbot_state IS NULL) → re-run flow, UPDATE existing fields in place
+    // - Existing lead with state 'done' → skip bot (agent handles)
+    // - Existing lead with a pending state → continue flow
+    if (contact.chatbot_state !== "done") {
       await runChatbot(admin, contact, message, conv.id, settings.fonnte_api_key);
-    } else if (isExisting && contact.chatbot_state !== "done") {
-      await admin.from("contacts").update({ chatbot_state: "done" }).eq("id", contact.id);
     }
 
     return json({ ok: true, contact_id: contact.id, conversation_id: conv.id });

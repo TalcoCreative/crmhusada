@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Send, Search, Loader2, User as UserIcon, Tag, Zap, FileText, MoreVertical, StickyNote, MessageSquare } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Send, Search, Loader2, User as UserIcon, Tag, Zap, FileText, MoreVertical, StickyNote, MessageSquare, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -86,6 +87,15 @@ export function InboxView({ mineOnly }: { mineOnly: boolean }) {
 
   useEffect(() => { loadConversations(); loadMeta(); }, [mineOnly, user?.id]);
 
+  // Online heartbeat — update last_seen_at every 60s
+  useEffect(() => {
+    if (!user) return;
+    const beat = () => supabase.from("profiles").update({ last_seen_at: new Date().toISOString() }).eq("id", user.id);
+    beat();
+    const t = setInterval(beat, 60_000);
+    return () => clearInterval(t);
+  }, [user?.id]);
+
   useEffect(() => {
     const ch = supabase.channel("inbox-all-" + (mineOnly ? "mine" : "team"))
       .on("postgres_changes", { event: "*", schema: "public", table: "conversations" }, () => loadConversations())
@@ -161,22 +171,69 @@ export function InboxView({ mineOnly }: { mineOnly: boolean }) {
     });
     const json = await res.json();
     setSending(false);
-    if (!res.ok || !json.ok) { toast.error(json.error || "Gagal kirim"); setText(textBackup); }
+    if (!res.ok || !json.ok) { toast.error(json.error || "Gagal kirim"); setText(textBackup); return; }
+    // Log reply
+    if (user) {
+      await supabase.from("activity_logs").insert({
+        user_id: user.id, action: "reply_message",
+        entity_type: "conversation", entity_id: activeId,
+        metadata: {
+          contact_name: active?.contact?.full_name, whatsapp: active?.contact?.whatsapp_number,
+          length: content.length,
+        },
+      } as any);
+    }
+  }
+
+  async function logAction(action: string, metadata: Record<string, any> = {}) {
+    if (!user) return;
+    await supabase.from("activity_logs").insert({
+      user_id: user.id, action,
+      entity_type: "conversation", entity_id: activeId,
+      metadata,
+    } as any);
   }
 
   async function assignAgent(agentId: string | null) {
     if (!activeId) return;
+    const prev = active?.assigned_agent_id || null;
     const { error } = await supabase.from("conversations").update({ assigned_agent_id: agentId }).eq("id", activeId);
     if (error) return toast.error(error.message);
+    await logAction("assign_agent", {
+      contact_name: active?.contact?.full_name, whatsapp: active?.contact?.whatsapp_number,
+      from_agent: prev, to_agent: agentId,
+      from_name: agentName(prev), to_name: agentName(agentId),
+    });
     toast.success(agentId ? `Ditugaskan ke ${agentName(agentId)}` : "Penugasan dihapus");
     loadConversations();
   }
 
   async function changeStage(stageId: string) {
     if (!active?.contact_id) return;
+    const prevStageId = active.contact?.stage_id || null;
     const { error } = await supabase.from("contacts").update({ stage_id: stageId }).eq("id", active.contact_id);
     if (error) return toast.error(error.message);
+    await logAction("change_stage", {
+      contact_name: active.contact?.full_name, whatsapp: active.contact?.whatsapp_number,
+      from_stage: stages.find((s) => s.id === prevStageId)?.name || null,
+      to_stage: stages.find((s) => s.id === stageId)?.name || null,
+    });
     toast.success("Stage diperbarui");
+    loadConversations();
+  }
+
+  async function deleteConversation() {
+    if (!active) return;
+    // Delete conversation (cascade removes messages). Reset chatbot_state so the next inbound restarts the bot — but keep the lead (contact) so name/phone/keluhan get UPDATED in place on the next round.
+    const { error: delErr } = await supabase.from("conversations").delete().eq("id", active.id);
+    if (delErr) return toast.error(delErr.message);
+    await supabase.from("contacts").update({ chatbot_state: null }).eq("id", active.contact_id);
+    await logAction("delete_chat", {
+      contact_name: active.contact?.full_name, whatsapp: active.contact?.whatsapp_number,
+      message_count: messages.length,
+    });
+    toast.success("Percakapan dihapus. Bot akan menanyakan ulang saat pesan berikutnya masuk.");
+    setActiveId(null);
     loadConversations();
   }
 
@@ -318,6 +375,7 @@ export function InboxView({ mineOnly }: { mineOnly: boolean }) {
                         Ambil chat
                       </Button>
                     )}
+                    <DeleteChatButton onConfirm={deleteConversation} variant="desktop" />
                   </div>
 
                   {/* Mobile actions menu */}
@@ -359,6 +417,7 @@ export function InboxView({ mineOnly }: { mineOnly: boolean }) {
                           Ambil chat ini
                         </Button>
                       )}
+                      <DeleteChatButton onConfirm={deleteConversation} variant="mobile" />
                       {active.contact?.chief_complaint && (
                         <div className="text-[11px] text-muted-foreground pt-2 border-t italic">
                           Keluhan: {active.contact.chief_complaint}
@@ -475,5 +534,39 @@ export function InboxView({ mineOnly }: { mineOnly: boolean }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function DeleteChatButton({ onConfirm, variant }: { onConfirm: () => void; variant: "desktop" | "mobile" }) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        {variant === "desktop" ? (
+          <Button size="sm" variant="ghost" className="h-8 text-xs text-destructive hover:bg-destructive/10 gap-1">
+            <Trash2 className="size-3.5" /> Hapus
+          </Button>
+        ) : (
+          <Button size="sm" variant="outline" className="w-full h-9 text-xs text-destructive border-destructive/40 gap-1.5">
+            <Trash2 className="size-3.5" /> Hapus percakapan
+          </Button>
+        )}
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Hapus percakapan?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Semua pesan dalam percakapan ini akan dihapus permanen. Data lead (nama, nomor, stage) tetap tersimpan di Leads.
+            Saat user mengirim pesan baru, bot akan menanyakan ulang produk, domisili, dan keluhan — lalu mengupdate data lead.
+            Tindakan ini akan dicatat di Log Aktivitas.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Batal</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            Ya, hapus
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
