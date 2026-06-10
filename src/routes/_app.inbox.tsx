@@ -417,6 +417,7 @@ export function InboxView({ mineOnly }: { mineOnly: boolean }) {
                           Ambil chat ini
                         </Button>
                       )}
+                      <DeleteChatButton onConfirm={deleteConversation} variant="mobile" />
                       {active.contact?.chief_complaint && (
                         <div className="text-[11px] text-muted-foreground pt-2 border-t italic">
                           Keluhan: {active.contact.chief_complaint}
