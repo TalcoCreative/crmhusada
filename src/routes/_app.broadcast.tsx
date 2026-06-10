@@ -28,7 +28,7 @@ function BroadcastPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [products, setProducts] = useState<{ id: string; name: string }[]>([]);
   const [stages, setStages] = useState<{ id: string; name: string; color: string }[]>([]);
-  const [agents, setAgents] = useState<{ id: string; full_name: string | null; email: string }[]>([]);
+  const [agents, setAgents] = useState<{ id: string; full_name: string | null; email: string | null }[]>([]);
 
   const [productId, setProductId] = useState<string>(ALL);
   const [stageId, setStageId] = useState<string>(ALL);
