@@ -78,28 +78,40 @@ Deno.serve(async (req) => {
 
     if (is_test) return json({ ok: true, fonnte: fdata });
 
-    // Persist outbound message
+    // Persist outbound message + compute response_seconds vs last inbound
     const fonnteId = Array.isArray(fdata.id) ? String(fdata.id[0]) : (fdata.id ? String(fdata.id) : null);
+
+    const { data: lastIn } = await admin
+      .from("messages")
+      .select("sent_at")
+      .eq("conversation_id", convId)
+      .eq("direction", "INBOUND")
+      .order("sent_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const respSec = lastIn?.sent_at
+      ? Math.max(0, Math.floor((Date.now() - new Date(lastIn.sent_at).getTime()) / 1000))
+      : null;
+
     const { data: msg, error: insErr } = await admin
       .from("messages")
       .insert({
-        conversation_id: convId,
-        direction: "OUTBOUND",
-        type: "TEXT",
-        content,
-        sent_by_id: user.id,
-        fonnte_message_id: fonnteId,
-        status: "SENT",
+        conversation_id: convId, direction: "OUTBOUND", type: "TEXT",
+        content, sent_by_id: user.id, fonnte_message_id: fonnteId,
+        status: "SENT", response_seconds: respSec,
       })
       .select()
       .single();
     if (insErr) return json({ error: insErr.message }, 500);
 
-    await admin.from("conversations").update({
+    const { data: conv2 } = await admin.from("conversations").select("first_response_at").eq("id", convId).maybeSingle();
+    const convPatch: any = {
       last_message_at: new Date().toISOString(),
       last_message_preview: content.slice(0, 100),
       last_replied_by_id: user.id,
-    }).eq("id", convId);
+    };
+    if (!conv2?.first_response_at) convPatch.first_response_at = new Date().toISOString();
+    await admin.from("conversations").update(convPatch).eq("id", convId);
 
     return json({ ok: true, message: msg, fonnte: fdata });
   } catch (e) {
