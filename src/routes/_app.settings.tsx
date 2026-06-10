@@ -356,13 +356,14 @@ function TeamTab() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [position, setPosition] = useState("");
+  const [phone, setPhone] = useState("62");
   const [role, setRole] = useState("agent");
 
   async function load() {
     setLoading(true);
     const [{ data: u }, { data: profiles }, { data: roles }] = await Promise.all([
       supabase.auth.getUser(),
-      supabase.from("profiles").select("id, email, full_name, position, created_at").order("created_at"),
+      supabase.from("profiles").select("id, email, full_name, position, phone, created_at").order("created_at"),
       supabase.from("user_roles").select("user_id, role"),
     ]);
     setMe(u.user?.id || null);
@@ -385,6 +386,14 @@ function TeamTab() {
     return j;
   }
 
+  function normPhone(v: string): string {
+    const d = v.replace(/\D/g, "");
+    if (!d) return "";
+    if (d.startsWith("0")) return "62" + d.slice(1);
+    if (d.startsWith("62")) return d;
+    return "62" + d;
+  }
+
   async function addAgent(e: React.FormEvent) {
     e.preventDefault();
     if (!fullName.trim() || !email.trim() || password.length < 6) {
@@ -393,9 +402,9 @@ function TeamTab() {
     }
     setBusy(true);
     try {
-      await callManageAgent({ action: "create", full_name: fullName, email, password, position, role });
+      await callManageAgent({ action: "create", full_name: fullName, email, password, position, phone: normPhone(phone), role });
       toast.success(`Agent ${fullName} ditambahkan`);
-      setFullName(""); setEmail(""); setPassword(""); setPosition(""); setRole("agent");
+      setFullName(""); setEmail(""); setPassword(""); setPosition(""); setPhone("62"); setRole("agent");
       load();
     } catch (e: any) { toast.error(e.message); }
     finally { setBusy(false); }
@@ -438,6 +447,10 @@ function TeamTab() {
             <div className="space-y-1.5">
               <Label>Jabatan</Label>
               <Input value={position} onChange={(e) => setPosition(e.target.value)} placeholder="cth: Front Office, Dokter, Supervisor" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>No. WhatsApp (62...)</Label>
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="6281234567890" />
             </div>
             <div className="space-y-1.5">
               <Label>Email</Label>
@@ -487,14 +500,26 @@ function TeamTab() {
                         </Badge>
                       ))}
                     </div>
-                    <div className="text-xs text-muted-foreground">{r.email}</div>
+                    <div className="text-xs text-muted-foreground">{r.email}{r.phone ? ` · ${r.phone}` : ""}</div>
                   </div>
                   <Input
                     defaultValue={r.position || ""}
                     placeholder="Jabatan..."
-                    className="h-9 text-xs w-full md:w-52"
+                    className="h-9 text-xs w-full md:w-44"
                     onBlur={(e) => {
                       if (e.target.value !== (r.position || "")) savePosition(r.id, e.target.value);
+                    }}
+                  />
+                  <Input
+                    defaultValue={r.phone || ""}
+                    placeholder="62..."
+                    className="h-9 text-xs w-full md:w-40"
+                    onBlur={async (e) => {
+                      const v = e.target.value.trim();
+                      if (v !== (r.phone || "")) {
+                        try { await callManageAgent({ action: "update", user_id: r.id, phone: v }); toast.success("Nomor diperbarui"); load(); }
+                        catch (err: any) { toast.error(err.message); }
+                      }
                     }}
                   />
                   <Button

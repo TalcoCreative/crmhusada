@@ -279,6 +279,7 @@ export type Database = {
           id: string
           is_active: boolean
           last_seen_at: string | null
+          phone: string | null
           position: string | null
           updated_at: string
           whatsapp_number: string | null
@@ -291,6 +292,7 @@ export type Database = {
           id: string
           is_active?: boolean
           last_seen_at?: string | null
+          phone?: string | null
           position?: string | null
           updated_at?: string
           whatsapp_number?: string | null
@@ -303,6 +305,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           last_seen_at?: string | null
+          phone?: string | null
           position?: string | null
           updated_at?: string
           whatsapp_number?: string | null

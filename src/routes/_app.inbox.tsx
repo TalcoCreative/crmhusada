@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_app/inbox")({
   head: () => ({ meta: [{ title: "Inbox — Husada CRM" }] }),
+  validateSearch: (s: Record<string, unknown>) => ({ c: typeof s.c === "string" ? s.c : undefined }),
   component: () => <InboxView mineOnly={false} />,
 });
 
@@ -86,6 +87,14 @@ export function InboxView({ mineOnly }: { mineOnly: boolean }) {
   }
 
   useEffect(() => { loadConversations(); loadMeta(); }, [mineOnly, user?.id]);
+
+  // Auto-select conversation from ?c= query param
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const c = params.get("c");
+    if (c) setActiveId(c);
+  }, [conversations.length]);
 
   // Online heartbeat — update last_seen_at every 60s
   useEffect(() => {
@@ -214,7 +223,10 @@ export function InboxView({ mineOnly }: { mineOnly: boolean }) {
     const { error } = await supabase.from("contacts").update({ stage_id: stageId }).eq("id", active.contact_id);
     if (error) return toast.error(error.message);
     await logAction("change_stage", {
+      contact_id: active.contact_id,
       contact_name: active.contact?.full_name, whatsapp: active.contact?.whatsapp_number,
+      from_stage_id: prevStageId,
+      to_stage_id: stageId,
       from_stage: stages.find((s) => s.id === prevStageId)?.name || null,
       to_stage: stages.find((s) => s.id === stageId)?.name || null,
     });

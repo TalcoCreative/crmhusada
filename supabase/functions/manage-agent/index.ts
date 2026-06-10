@@ -35,11 +35,20 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const action = String(body.action || "");
 
+    function normPhone(v: string): string | null {
+      const d = String(v || "").replace(/\D/g, "");
+      if (!d) return null;
+      if (d.startsWith("0")) return "62" + d.slice(1);
+      if (d.startsWith("62")) return d;
+      return "62" + d;
+    }
+
     if (action === "create") {
       const email = String(body.email || "").trim().toLowerCase();
       const password = String(body.password || "");
       const full_name = String(body.full_name || "").trim();
       const position = String(body.position || "").trim();
+      const phone = normPhone(body.phone || "");
       const role = String(body.role || "agent");
       if (!email || !password || password.length < 6) return j({ error: "Email & password (min 6) wajib" }, 400);
 
@@ -50,7 +59,7 @@ Deno.serve(async (req) => {
       if (cErr || !created.user) return j({ error: cErr?.message || "Gagal membuat user" }, 400);
 
       const uid = created.user.id;
-      await admin.from("profiles").upsert({ id: uid, email, full_name, position }, { onConflict: "id" });
+      await admin.from("profiles").upsert({ id: uid, email, full_name, position, phone }, { onConflict: "id" });
 
       // Handle role: replace default 'agent' role if a different one was requested
       if (role && role !== "agent") {
@@ -60,7 +69,7 @@ Deno.serve(async (req) => {
 
       await admin.from("activity_logs").insert({
         user_id: u.user.id, action: "create_agent", entity_type: "profile", entity_id: uid,
-        metadata: { email, full_name, position, role },
+        metadata: { email, full_name, position, phone, role },
       });
       return j({ ok: true, id: uid });
     }
@@ -85,6 +94,7 @@ Deno.serve(async (req) => {
       const patch: Record<string, any> = {};
       if (typeof body.full_name === "string") patch.full_name = body.full_name.trim();
       if (typeof body.position === "string") patch.position = body.position.trim();
+      if (typeof body.phone === "string") patch.phone = normPhone(body.phone);
       if (Object.keys(patch).length) await admin.from("profiles").update(patch).eq("id", target);
       if (typeof body.role === "string" && body.role) {
         await admin.from("user_roles").delete().eq("user_id", target);
