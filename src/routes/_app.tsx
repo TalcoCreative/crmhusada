@@ -19,6 +19,7 @@ const navItems = [
   { to: "/leads", label: "Leads", icon: Users },
   { to: "/my-leads", label: "My Leads", icon: UserCircle2 },
   { to: "/broadcast", label: "Broadcast", icon: Send },
+  { to: "/activity", label: "Log", icon: Activity },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
