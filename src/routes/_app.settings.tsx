@@ -348,59 +348,163 @@ function ProductsTab() {
 function TeamTab() {
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [me, setMe] = useState<string | null>(null);
+
+  // Add-agent form
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [position, setPosition] = useState("");
+  const [role, setRole] = useState("agent");
 
   async function load() {
     setLoading(true);
-    const [{ data: profiles }, { data: roles }] = await Promise.all([
-      supabase.from("profiles").select("id, email, full_name, created_at").order("created_at"),
+    const [{ data: u }, { data: profiles }, { data: roles }] = await Promise.all([
+      supabase.auth.getUser(),
+      supabase.from("profiles").select("id, email, full_name, position, created_at").order("created_at"),
       supabase.from("user_roles").select("user_id, role"),
     ]);
+    setMe(u.user?.id || null);
     const roleMap: Record<string, string[]> = {};
-    (roles || []).forEach((r: any) => {
-      roleMap[r.user_id] = [...(roleMap[r.user_id] || []), r.role];
-    });
+    (roles || []).forEach((r: any) => { roleMap[r.user_id] = [...(roleMap[r.user_id] || []), r.role]; });
     setRows((profiles || []).map((p: any) => ({ ...p, roles: roleMap[p.id] || [] })));
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
 
-  const inviteUrl = `${window.location.origin}/auth`;
+  async function callManageAgent(body: any) {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/manage-agent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify(body),
+    });
+    const j = await res.json();
+    if (!res.ok || !j.ok) throw new Error(j.error || "Gagal");
+    return j;
+  }
+
+  async function addAgent(e: React.FormEvent) {
+    e.preventDefault();
+    if (!fullName.trim() || !email.trim() || password.length < 6) {
+      toast.error("Nama, email, dan password (min 6) wajib diisi");
+      return;
+    }
+    setBusy(true);
+    try {
+      await callManageAgent({ action: "create", full_name: fullName, email, password, position, role });
+      toast.success(`Agent ${fullName} ditambahkan`);
+      setFullName(""); setEmail(""); setPassword(""); setPosition(""); setRole("agent");
+      load();
+    } catch (e: any) { toast.error(e.message); }
+    finally { setBusy(false); }
+  }
+
+  async function deleteAgent(id: string, name: string) {
+    if (id === me) { toast.error("Tidak bisa hapus akun sendiri"); return; }
+    if (!confirm(`Hapus agent "${name}"? Aksi ini permanen.`)) return;
+    setBusy(true);
+    try {
+      await callManageAgent({ action: "delete", user_id: id });
+      toast.success("Agent dihapus");
+      load();
+    } catch (e: any) { toast.error(e.message); }
+    finally { setBusy(false); }
+  }
+
+  async function savePosition(id: string, value: string) {
+    try {
+      await callManageAgent({ action: "update", user_id: id, position: value });
+      toast.success("Jabatan diperbarui");
+    } catch (e: any) { toast.error(e.message); }
+  }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 mt-4">
       <Card>
         <CardHeader>
-          <CardTitle>Tim Agent</CardTitle>
+          <CardTitle>Tambah Agent Baru</CardTitle>
           <CardDescription>
-            Semua agent dapat melihat & membalas chat di Inbox secara real-time. Setiap balasan menampilkan nama agent.
+            Buat akun agent langsung — tanpa konfirmasi email. Pendaftaran mandiri di halaman login sudah dinonaktifkan, semua akun dibuat dari sini.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center gap-2 p-3 rounded-md bg-muted/50">
-            <Input readOnly value={inviteUrl} />
-            <Button variant="outline" onClick={() => { navigator.clipboard.writeText(inviteUrl); toast.success("Link disalin"); }}>
-              <Copy className="size-4" />
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Bagikan link di atas ke calon agent. Mereka register → otomatis ter-set sebagai <Badge variant="outline">agent</Badge> dan langsung bisa membuka Inbox.
-          </p>
+        <CardContent>
+          <form onSubmit={addAgent} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Nama Lengkap</Label>
+              <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Dr. Andi" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Jabatan</Label>
+              <Input value={position} onChange={(e) => setPosition(e.target.value)} placeholder="cth: Front Office, Dokter, Supervisor" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Email</Label>
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="agent@husada.id" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Password</Label>
+              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimal 6 karakter" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Role</Label>
+              <select value={role} onChange={(e) => setRole(e.target.value)}
+                className="w-full h-10 px-3 rounded-md border bg-background text-sm">
+                <option value="agent">Agent</option>
+                <option value="admin">Admin</option>
+                <option value="super_admin">Super Admin</option>
+              </select>
+            </div>
+            <div className="flex items-end">
+              <Button type="submit" disabled={busy} className="w-full md:w-auto">
+                {busy && <Loader2 className="size-4 mr-2 animate-spin" />}Tambah Agent
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Tim Agent ({rows.length})</CardTitle>
+          <CardDescription>Semua agent dapat melihat & membalas chat di Inbox secara real-time.</CardDescription>
+        </CardHeader>
+        <CardContent>
           {loading ? (
-            <div className="text-sm text-muted-foreground">Memuat…</div>
+            <div className="text-sm text-muted-foreground">Memuat...</div>
           ) : (
             <div className="border rounded-md divide-y">
               {rows.map((r) => (
-                <div key={r.id} className="p-3 flex items-center justify-between gap-3">
-                  <div>
-                    <div className="font-medium text-sm">{r.full_name || r.email}</div>
+                <div key={r.id} className="p-3 flex items-center justify-between gap-3 flex-wrap">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium text-sm flex items-center gap-2 flex-wrap">
+                      {r.full_name || r.email}
+                      {r.id === me && <Badge variant="outline" className="text-[10px]">Anda</Badge>}
+                      {r.roles.map((role: string) => (
+                        <Badge key={role} variant={role.includes("admin") ? "default" : "secondary"} className="text-[10px]">
+                          {role}
+                        </Badge>
+                      ))}
+                    </div>
                     <div className="text-xs text-muted-foreground">{r.email}</div>
                   </div>
-                  <div className="flex gap-1">
-                    {r.roles.map((role: string) => (
-                      <Badge key={role} variant={role.includes("admin") ? "default" : "secondary"}>{role}</Badge>
-                    ))}
-                  </div>
+                  <Input
+                    defaultValue={r.position || ""}
+                    placeholder="Jabatan..."
+                    className="h-9 text-xs w-full md:w-52"
+                    onBlur={(e) => {
+                      if (e.target.value !== (r.position || "")) savePosition(r.id, e.target.value);
+                    }}
+                  />
+                  <Button
+                    size="sm" variant="ghost"
+                    className="text-destructive hover:bg-destructive/10"
+                    disabled={busy || r.id === me}
+                    onClick={() => deleteAgent(r.id, r.full_name || r.email)}
+                  >
+                    Hapus
+                  </Button>
                 </div>
               ))}
               {!rows.length && <p className="p-3 text-sm text-muted-foreground">Belum ada anggota tim.</p>}

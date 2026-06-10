@@ -6,15 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, ShieldCheck } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
       { title: "Masuk — Husada CRM" },
-      { name: "description", content: "Masuk atau daftar ke Husada CRM untuk mengelola leads dan percakapan WhatsApp." },
+      { name: "description", content: "Masuk ke Husada CRM untuk mengelola leads dan percakapan WhatsApp." },
     ],
   }),
   component: AuthPage,
@@ -25,7 +24,6 @@ function AuthPage() {
   const { user, loading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -39,18 +37,6 @@ function AuthPage() {
     setSubmitting(false);
     if (error) toast.error(error.message);
     else { toast.success("Berhasil masuk"); router.navigate({ to: "/dashboard" }); }
-  }
-
-  async function signUp(e: React.FormEvent) {
-    e.preventDefault();
-    setSubmitting(true);
-    const { error } = await supabase.auth.signUp({
-      email, password,
-      options: { emailRedirectTo: `${window.location.origin}/dashboard`, data: { full_name: fullName } },
-    });
-    setSubmitting(false);
-    if (error) toast.error(error.message);
-    else { toast.success("Akun dibuat. Silakan masuk."); }
   }
 
   return (
@@ -75,54 +61,33 @@ function AuthPage() {
       <div className="flex items-center justify-center p-6">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>Selamat datang</CardTitle>
-            <CardDescription>Masuk untuk melanjutkan ke CRM.</CardDescription>
+            <CardTitle>Masuk ke CRM</CardTitle>
+            <CardDescription>Gunakan akun yang dibuatkan admin untuk Anda.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="signin">
-              <TabsList className="grid grid-cols-2 w-full">
-                <TabsTrigger value="signin">Masuk</TabsTrigger>
-                <TabsTrigger value="signup">Daftar</TabsTrigger>
-              </TabsList>
-              <TabsContent value="signin">
-                <form onSubmit={signIn} className="space-y-3 mt-3">
-                  <div className="space-y-1.5">
-                    <Label>Email</Label>
-                    <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Password</Label>
-                    <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={submitting}>
-                    {submitting && <Loader2 className="size-4 animate-spin mr-2" />} Masuk
-                  </Button>
-                </form>
-              </TabsContent>
-              <TabsContent value="signup">
-                <form onSubmit={signUp} className="space-y-3 mt-3">
-                  <div className="space-y-1.5">
-                    <Label>Nama Lengkap</Label>
-                    <Input required value={fullName} onChange={(e) => setFullName(e.target.value)} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Email</Label>
-                    <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Password</Label>
-                    <Input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={submitting}>
-                    {submitting && <Loader2 className="size-4 animate-spin mr-2" />} Daftar
-                  </Button>
-                  <p className="text-xs text-muted-foreground">User pertama otomatis jadi Super Admin.</p>
-                </form>
-              </TabsContent>
-            </Tabs>
+            <form onSubmit={signIn} className="space-y-3">
+              <div className="space-y-1.5">
+                <Label>Email</Label>
+                <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Password</Label>
+                <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+              </div>
+              <Button type="submit" className="w-full" disabled={submitting}>
+                {submitting && <Loader2 className="size-4 animate-spin mr-2" />} Masuk
+              </Button>
+            </form>
+            <div className="mt-4 flex items-start gap-2 p-3 rounded-md bg-muted/60 text-xs text-muted-foreground">
+              <ShieldCheck className="size-4 mt-0.5 shrink-0 text-primary" />
+              <div>
+                Pendaftaran mandiri dinonaktifkan. Akun agent dibuat oleh admin melalui menu <strong>Settings → Tim Agent</strong>.
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
     </div>
   );
 }
+
