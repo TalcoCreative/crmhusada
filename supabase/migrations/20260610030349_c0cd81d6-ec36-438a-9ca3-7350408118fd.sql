@@ -1,0 +1,2 @@
+ALTER TABLE public.conversations REPLICA IDENTITY FULL;
+ALTER TABLE public.contacts REPLICA IDENTITY FULL;
