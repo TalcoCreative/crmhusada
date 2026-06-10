@@ -151,9 +151,11 @@ function FonnteTab() {
     });
     const j = await res.json();
     setSaving(false);
-    if (!res.ok) toast.error(j.error || "Gagal menyimpan");
-    else toast.success("Tersimpan");
+    if (!res.ok) { toast.error(j.error || "Gagal menyimpan"); return; }
+    if (j.device) { setDevice(j.device); toast.success(`Tersimpan · Device terhubung: ${j.device}`); }
+    else { toast.success("Tersimpan (device tidak terdeteksi, periksa token)"); }
   }
+
 
   async function testConnection() {
     if (!apiKey) { toast.error("Masukkan API key dulu"); return; }
