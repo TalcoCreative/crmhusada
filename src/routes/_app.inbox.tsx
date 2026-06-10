@@ -375,6 +375,7 @@ export function InboxView({ mineOnly }: { mineOnly: boolean }) {
                         Ambil chat
                       </Button>
                     )}
+                    <DeleteChatButton onConfirm={deleteConversation} variant="desktop" />
                   </div>
 
                   {/* Mobile actions menu */}
