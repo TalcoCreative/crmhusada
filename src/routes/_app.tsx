@@ -6,7 +6,8 @@ import {
   LayoutDashboard, MessageSquare, Users, Settings, LogOut, Send, Inbox, UserCircle2, Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import husadaLogo from "@/assets/husada-logo.png.asset.json";
+import husadaLogo from "@/assets/husada-logo-v2.png.asset.json";
+import { usePushNotifications } from "@/hooks/use-push-notifications";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,

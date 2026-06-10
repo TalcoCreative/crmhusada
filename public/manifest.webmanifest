@@ -1,0 +1,17 @@
+{
+  "name": "Husada CRM",
+  "short_name": "Husada CRM",
+  "description": "WhatsApp Integration CRM untuk Rumah Sakit Husada",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#0a1a2e",
+  "background_color": "#0a1a2e",
+  "lang": "id",
+  "icons": [
+    { "src": "/__l5e/assets-v1/e0f90eb2-5443-4dc1-8857-08de233c2f3d/husada-logo-v2.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/__l5e/assets-v1/e0f90eb2-5443-4dc1-8857-08de233c2f3d/husada-logo-v2.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/__l5e/assets-v1/e0f90eb2-5443-4dc1-8857-08de233c2f3d/husada-logo-v2.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -12,7 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "sonner";
-import husadaLogo from "@/assets/husada-logo.png.asset.json";
+import husadaLogo from "@/assets/husada-logo-v2.png.asset.json";
 
 function NotFoundComponent() {
   return (
@@ -80,19 +80,25 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Husada CRM" },
-      { name: "description", content: "CRM Rumah Sakit Husada terintegrasi WhatsApp via Fonnte." },
+      { name: "description", content: "CRM Rumah Sakit Husada terintegrasi WhatsApp Integration." },
       { name: "author", content: "Rumah Sakit Husada" },
+      { name: "theme-color", content: "#0a1a2e" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "Husada CRM" },
+      { name: "mobile-web-app-capable", content: "yes" },
       { property: "og:title", content: "Husada CRM" },
-      { property: "og:description", content: "CRM Rumah Sakit Husada terintegrasi WhatsApp via Fonnte." },
+      { property: "og:description", content: "CRM Rumah Sakit Husada terintegrasi WhatsApp Integration." },
       { property: "og:type", content: "website" },
       { property: "og:image", content: husadaLogo.url },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "Husada CRM" },
-      { name: "twitter:description", content: "CRM Rumah Sakit Husada terintegrasi WhatsApp via Fonnte." },
+      { name: "twitter:description", content: "CRM Rumah Sakit Husada terintegrasi WhatsApp Integration." },
       { name: "twitter:image", content: husadaLogo.url },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "icon", type: "image/png", href: husadaLogo.url },
       { rel: "apple-touch-icon", href: husadaLogo.url },
       { rel: "shortcut icon", href: husadaLogo.url },
