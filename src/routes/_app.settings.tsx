@@ -19,9 +19,9 @@ export const Route = createFileRoute("/_app/settings")({
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 function SettingsPage() {
-  const [tab, setTab] = useState("fonnte");
+  const [tab, setTab] = useState("gateway");
   const tabs = [
-    { v: "fonnte", label: "Fonnte WA" },
+    { v: "gateway", label: "WhatsApp Gateway" },
     { v: "quick", label: "Quick Replies" },
     { v: "products", label: "Produk" },
     { v: "team", label: "Tim Agent" },
@@ -47,7 +47,7 @@ function SettingsPage() {
       </div>
 
       <div>
-        {tab === "fonnte" && <FonnteTab />}
+        {tab === "gateway" && <FonnteTab />}
         {tab === "quick" && <QuickRepliesTab />}
         {tab === "products" && <ProductsTab />}
         {tab === "team" && <TeamTab />}
@@ -169,7 +169,7 @@ function FonnteTab() {
     const j = await res.json();
     setTestResult(j);
     setTesting(false);
-    if (j.ok) toast.success("Fonnte terkoneksi!");
+    if (j.ok) toast.success("Gateway terkoneksi!");
     else toast.error("Koneksi gagal. Cek API key.");
   }
 
@@ -185,20 +185,16 @@ function FonnteTab() {
     const j = await res.json();
     setSending(false);
     if (j.ok) toast.success("Pesan test terkirim! Cek WhatsApp.");
-    else toast.error(j.error || JSON.stringify(j.fonnte));
+    else toast.error(j.error || JSON.stringify(j.gateway || j.fonnte));
   }
 
   return (
     <div className="space-y-4 mt-4">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><MessageCircle className="size-5" /> Fonnte API Key</CardTitle>
+          <CardTitle className="flex items-center gap-2"><MessageCircle className="size-5" /> WhatsApp Gateway API Key</CardTitle>
           <CardDescription>
-            Dapatkan API key dari{" "}
-            <a href="https://fonnte.com/devices" target="_blank" rel="noreferrer" className="text-primary inline-flex items-center gap-1 underline">
-              fonnte.com/devices <ExternalLink className="size-3" />
-            </a>{" "}
-            (login → Device → Token).
+            Hubungkan WhatsApp Gateway untuk mengirim dan menerima pesan otomatis. Token didapat dari dashboard penyedia gateway Anda.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -212,9 +208,9 @@ function FonnteTab() {
             </div>
           )}
           <div className="space-y-1.5">
-            <Label>Fonnte API Token</Label>
-            <Input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="Token dari Fonnte" />
-            <p className="text-[11px] text-muted-foreground">Setelah Simpan, sistem akan otomatis mendeteksi nomor device dari token ini.</p>
+            <Label>API Token</Label>
+            <Input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="Token gateway WhatsApp" />
+            <p className="text-[11px] text-muted-foreground">Setelah Simpan, sistem otomatis mendeteksi nomor device dari token ini.</p>
           </div>
           <div className="space-y-1.5">
             <Label>Nomor Device (opsional, otomatis terdeteksi)</Label>
@@ -233,7 +229,7 @@ function FonnteTab() {
             <div className={`mt-2 p-3 rounded-md text-sm border ${testResult.ok ? "bg-success/10 border-success/30 text-success" : "bg-destructive/10 border-destructive/30 text-destructive"}`}>
               <div className="flex items-center gap-2 font-medium">
                 {testResult.ok ? <CheckCircle2 className="size-4" /> : <XCircle className="size-4" />}
-                {testResult.ok ? "Terkoneksi ke Fonnte" : "Gagal terhubung"}
+                {testResult.ok ? "Gateway terhubung" : "Gagal terhubung"}
               </div>
               <pre className="text-[11px] mt-2 overflow-x-auto opacity-80">{JSON.stringify(testResult.data || testResult, null, 2)}</pre>
             </div>
@@ -269,8 +265,8 @@ function WebhookTab() {
   return (
     <Card className="mt-4">
       <CardHeader>
-        <CardTitle>Webhook URL untuk Fonnte</CardTitle>
-        <CardDescription>Copy URL ini ke <strong>Fonnte Dashboard → Device → URL Webhook</strong>, lalu centang event <em>incoming</em>.</CardDescription>
+        <CardTitle>Webhook URL untuk WhatsApp Gateway</CardTitle>
+        <CardDescription>Copy URL ini ke <strong>dashboard gateway Anda → Device → URL Webhook</strong>, lalu centang event <em>incoming</em>.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex gap-2">
