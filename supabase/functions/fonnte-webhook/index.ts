@@ -183,10 +183,19 @@ async function runChatbot(admin: any, contact: any, message: string, convId: str
     if (Number.isInteger(idx) && products && idx >= 1 && idx <= products.length) {
       updates.interested_product_id = products[idx - 1].id;
       data.product_name = products[idx - 1].name;
-      reply = `Anda memilih: ${products[idx - 1].name}.\n\nDomisili Anda di kota mana?`;
-      nextState = "ask_domicile";
+      reply = `Anda memilih: ${products[idx - 1].name}.\n\nMohon kirim nama lengkap Anda.`;
+      nextState = "ask_name";
     } else {
       reply = `Mohon balas dengan angka pilihan layanan:\n\n${productList}`;
+    }
+  } else if (state === "ask_name") {
+    const name = message.trim();
+    if (name.length < 2) {
+      reply = `Mohon kirim nama lengkap Anda (minimal 2 karakter).`;
+    } else {
+      updates.full_name = name;
+      reply = `Terima kasih, ${name}. Domisili Anda di kota mana?`;
+      nextState = "ask_domicile";
     }
   } else if (state === "ask_domicile") {
     updates.domicile = message.trim();
