@@ -42,9 +42,9 @@ function Dashboard() {
 
   useEffect(() => {
     (async () => {
-      const [contacts, openConv, msgsList, profiles, respMsgs, stageLogs, allConvs] = await Promise.all([
-        supabase.from("contacts").select("id, estimated_revenue, stage_id, created_at, stages(name, color)"),
-        supabase.from("conversations").select("id, assigned_agent_id, last_message_at", { count: "exact" }).eq("status", "OPEN"),
+      const [contacts, openConv, msgsList, profiles, respMsgs, stageLogs, allConvs, assignLogs] = await Promise.all([
+        supabase.from("contacts").select("id, full_name, whatsapp_number, estimated_revenue, stage_id, created_at, stages(name, color)"),
+        supabase.from("conversations").select("id, contact_id, assigned_agent_id, last_message_at, last_message_preview", { count: "exact" }).eq("status", "OPEN"),
         supabase.from("messages").select("sent_at, direction")
           .gte("sent_at", startISO).lte("sent_at", endISO),
         supabase.from("profiles").select("id, full_name, email"),
@@ -56,6 +56,9 @@ function Dashboard() {
           .gte("created_at", startISO).lte("created_at", endISO)
           .order("created_at", { ascending: true }),
         supabase.from("conversations").select("id, contact_id, created_at"),
+        supabase.from("activity_logs").select("entity_id, metadata, created_at, user_id")
+          .eq("action", "assign_agent")
+          .gte("created_at", startISO).lte("created_at", endISO),
       ]);
 
       const byStage: Record<string, { name: string; color: string; count: number }> = {};
