@@ -25,6 +25,7 @@ function Dashboard() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [data, setData] = useState<any>(null);
+  const [selectedAgent, setSelectedAgent] = useState<any>(null);
 
   const { startISO, endISO } = useMemo(() => {
     const end = new Date(); end.setHours(23, 59, 59, 999);
