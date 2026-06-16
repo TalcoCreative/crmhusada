@@ -403,7 +403,124 @@ function Dashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* Leads per Agent (Historical vs Current) */}
+      <Card className="glow-soft">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2"><UserCheck className="size-4" /> Leads per Agent</CardTitle>
+          <p className="text-xs text-muted-foreground">
+            <b>Historis</b>: total lead unik yang pernah di-assign ke agent (rentang dipilih). <b>Saat ini</b>: lead aktif yang sedang dipegang agent. Klik baris untuk detail.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {(!data?.agentLeadStats || data.agentLeadStats.length === 0) ? (
+            <p className="text-center text-sm text-muted-foreground py-8">Belum ada data assignment.</p>
+          ) : (
+            <div className="grid lg:grid-cols-2 gap-4">
+              <ResponsiveContainer width="100%" height={Math.max(220, (data?.agentLeadStats?.length || 0) * 38)}>
+                <BarChart data={data?.agentLeadStats || []} layout="vertical" margin={{ left: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                  <XAxis type="number" fontSize={11} allowDecimals={false} />
+                  <YAxis type="category" dataKey="name" fontSize={11} width={100} />
+                  <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Bar dataKey="historicalUnique" name="Historis (unik)" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} />
+                  <Bar dataKey="currentCount" name="Sedang dipegang" fill="#10b981" radius={[0, 6, 6, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="text-muted-foreground">
+                    <tr className="border-b">
+                      <th className="text-left py-2">Agent</th>
+                      <th className="text-right">Historis (unik)</th>
+                      <th className="text-right">Total Assign</th>
+                      <th className="text-right">Saat ini</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.agentLeadStats.map((a: any) => (
+                      <tr key={a.id} className="border-b hover:bg-accent/40 cursor-pointer" onClick={() => setSelectedAgent(a)}>
+                        <td className="py-2 pr-2 font-medium">{a.name}</td>
+                        <td className="text-right tabular-nums">{a.historicalUnique}</td>
+                        <td className="text-right tabular-nums text-muted-foreground">{a.historicalTotal}</td>
+                        <td className="text-right tabular-nums"><Badge variant="secondary">{a.currentCount}</Badge></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <AgentDetailDialog agent={selectedAgent} contactMap={data?.contactMap || {}} onClose={() => setSelectedAgent(null)} />
     </div>
+  );
+}
+
+function AgentDetailDialog({ agent, contactMap, onClose }: { agent: any; contactMap: Record<string, any>; onClose: () => void }) {
+  return (
+    <Dialog open={!!agent} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><UserCheck className="size-5" /> {agent?.name}</DialogTitle>
+        </DialogHeader>
+        {agent && (
+          <div className="space-y-5">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-lg border p-3"><div className="text-[11px] text-muted-foreground">Historis (unik)</div><div className="text-xl font-bold">{agent.historicalUnique}</div></div>
+              <div className="rounded-lg border p-3"><div className="text-[11px] text-muted-foreground">Total Assign</div><div className="text-xl font-bold">{agent.historicalTotal}</div></div>
+              <div className="rounded-lg border p-3"><div className="text-[11px] text-muted-foreground">Sedang dipegang</div><div className="text-xl font-bold">{agent.currentCount}</div></div>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-sm mb-2 flex items-center gap-2"><InboxIcon className="size-4" /> Lead aktif ({agent.currentList.length})</h4>
+              {agent.currentList.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Tidak ada lead aktif.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {agent.currentList.map((c: any) => (
+                    <Link key={c.conversation_id} to="/inbox" search={{ c: c.conversation_id } as any}
+                      className="flex items-center gap-2 p-2 rounded-md border hover:bg-accent/40 text-xs">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{c.full_name || c.whatsapp_number || "—"}</div>
+                        <div className="text-muted-foreground truncate">{c.last_message_preview || "—"}</div>
+                      </div>
+                      {c.stage && <Badge style={{ background: c.stage_color, color: "#fff" }} className="text-[10px]">{c.stage}</Badge>}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-sm mb-2 flex items-center gap-2"><History className="size-4" /> Pernah di-assign ({agent.historicalContactIds.length})</h4>
+              {agent.historicalContactIds.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Belum ada riwayat.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {agent.historicalContactIds.map((cid: string) => {
+                    const c = contactMap[cid];
+                    if (!c) return null;
+                    return (
+                      <div key={cid} className="flex items-center gap-2 p-2 rounded-md border text-xs">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">{c.full_name || c.whatsapp_number || "—"}</div>
+                          <div className="text-muted-foreground truncate">{c.whatsapp_number}</div>
+                        </div>
+                        {c.stages?.name && <Badge style={{ background: c.stages.color, color: "#fff" }} className="text-[10px]">{c.stages.name}</Badge>}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
